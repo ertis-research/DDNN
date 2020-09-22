@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras.models import Sequential
 
-def model( img_height, img_width, num_classes ):
+def create_model( img_height, img_width, num_classes ):
     
     data_augmentation = Sequential(
         [
