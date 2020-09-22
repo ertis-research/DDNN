@@ -11,6 +11,22 @@ import pathlib
 # https://github.com/ertis-research/DDNN-Implementation/blob/master/EDGE/model.py
 # https://github.com/ertis-research/DDNN-Implementation/blob/master/EDGE/model-coral-1.py
 
+def read_images( i_path, i_format, label_file_path ):
+    
+    images = {}
+    labels = []
+    # Read image per label
+    with open( label_file_path, "r" ) as label_file:
+        
+        for line in label_file.readlines():
+
+            label = line.replace("\n", "").replace("\t", "")
+            labels.append( label )
+            data_dir = pathlib.Path( i_path + "/" + label )
+            images[ label ] = list( data_dir.glob( '*.{}'.format( i_format ) ) )
+    
+    return labels, images
+
 def error_input( p ):
     p.error( "The --input (-i) argument requires the --labels arguments." )
 
@@ -45,11 +61,9 @@ def main():
 
         else:
 
-            # Read images for prediction
-            data_dir = pathlib.Path( args.input )
-            images = list( data_dir.glob( '*/*.{}'.format( args.input_format ) ) )
+            labels, images = read_images( args.input, args.input_format, args.labels )
 
-            preprocess( images )
+            preprocess( labels, images )
             
             # model inference
 
