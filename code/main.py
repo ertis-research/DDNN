@@ -34,17 +34,19 @@ def main():
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument( '-t', '--tensorflow', help='Flag to indicate if the file is a tensorflow model.', nargs='?', const=True, default=False, type=bool ) 
+    parser.add_argument( '--tensorflow', help='Flag to indicate if the file is a tensorflow model.', nargs='?', const=True, default=False, type=bool ) 
     # parser.add_argument( '--model', help='File path of the model.' )
 
     parser.add_argument( '-i', '--input', help="Directory path of input images." )
     parser.add_argument( '-f', '--input_format', help="Format of input images.", nargs='?', const=True, default="jpg")
     parser.add_argument( '-l', '--labels', help="File path of labels file." )
-
-    # parser --edge
-    # parser --fog
-    # parser --cloud
-
+    
+    parser.add_argument( '--edge', help="This device computes entries as an edge device.", nargs='?', const=True, default=False, type=bool )
+    parser.add_argument( '--fog', help="This device computes entries as a fog device.", nargs='?', const=True, default=False, type=bool )
+    parser.add_argument( '--cloud', help="This device computes entries as a cloud device.", nargs='?', const=True, default=False, type=bool )
+    
+    parser.add_argument( '-n', '--next-device', help="Indicates the value of the IP to send the inferance values obtained." )
+    parser.add_argument( '-t', '--threshold', help="Minimum value to be accepted as a correct value.", type=float)
     args = parser.parse_args()
 
     if args.tensorflow:
