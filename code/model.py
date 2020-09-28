@@ -6,6 +6,7 @@ from tensorflow.keras.models import Sequential
 
 def create_model( img_height, img_width, num_classes ):
     
+    model_names = [ "model", "edge", "fog", "cloud" ]
     # data_augmentation = Sequential(
     #     [
     #         layers.experimental.preprocessing.RandomFlip("horizontal", 
@@ -104,4 +105,4 @@ def create_model( img_height, img_width, num_classes ):
     #             loss=keras.losses.CategoricalCrossentropy(),
     #             metrics=["accuracy"])
 
-    return model
+    return model, edge_model, fog_model, cloud_model, model_names
