@@ -35,7 +35,7 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument( '--tensorflow', help='Flag to indicate if the file is a tensorflow model.', nargs='?', const=True, default=False, type=bool ) 
-    # parser.add_argument( '--model', help='File path of the model.' )
+    parser.add_argument( '--models', help='Each model path.', nargs="*", required=True )
 
     parser.add_argument( '-i', '--input', help="Directory path of input images." )
     parser.add_argument( '-f', '--input_format', help="Format of input images.", nargs='?', const=True, default="jpg")
@@ -68,6 +68,16 @@ def main():
             preprocess( labels, images )
             
             # model inference
+            if not args.models:
+                # If no model is passed, this code will only pass data after preprocessing them and
+                # recover the output of another model in a higher layer of the architecture.
+                print( args.next_device )
+
+            else:
+                # If a model or models are passed as argument, it will inference using them in the order they are
+                # introduced and then send the result if a higher layer is specified.
+                for model_path in args.models:
+                    print( model_path )
 
             output( None )
 
