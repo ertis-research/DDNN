@@ -40,6 +40,8 @@ def main():
     parser.add_argument( '-i', '--input', help="Directory path of input images." )
     parser.add_argument( '-f', '--input_format', help="Format of input images.", nargs='?', const=True, default="jpg")
     parser.add_argument( '-l', '--labels', help="File path of labels file." )
+    parser.add_argument( '--height', help="", default=180 )
+    parser.add_argument( '--width', help="", default=180 )
     
     parser.add_argument( '--edge', help="This device computes entries as an edge device.", nargs='?', const=True, default=False, type=bool )
     parser.add_argument( '--fog', help="This device computes entries as a fog device.", nargs='?', const=True, default=False, type=bool )
@@ -65,7 +67,7 @@ def main():
 
             labels, images = read_images( args.input, args.input_format, args.labels )
 
-            preprocess( labels, images )
+            x, y = preprocess( labels, images, args.height, args.width )
             
             # model inference
             if not args.models:
@@ -76,10 +78,22 @@ def main():
             else:
                 # If a model or models are passed as argument, it will inference using them in the order they are
                 # introduced and then send the result if a higher layer is specified.
+                
+                ## Load models
+                models = []
                 for model_path in args.models:
-                    print( model_path )
+                    models.append( tf.keras.models.load_model( model_path ) )
 
-            output( None )
+                ## Inference
+                _y = []
+                for input_i in x:
+
+                    _x = input_i
+                    for model in models:
+                        _x = model.predict( _x )
+                    _y.append(_x)
+
+            output( y, _y )
 
 if __name__ == '__main__':
     main()
