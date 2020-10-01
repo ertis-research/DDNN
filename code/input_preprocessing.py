@@ -18,7 +18,7 @@ def preprocess( labels, list_images, img_height, img_width ):
         for image_path in list_images[ label ]:
             image = preprocessing.image.load_img( image_path, target_size=( img_height, img_width ) )
             input_arr = preprocessing.image.img_to_array( image )
-            x.append( input_arr.reshape(1, img_height, img_width, 3 ) )
+            x.append( input_arr.reshape(1, img_height, img_width, 3 ) * 1./255 )
             one_hot = np.zeros( len(labels) )
             one_hot[i] = 1
             y.append( one_hot )
