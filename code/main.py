@@ -40,7 +40,7 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument( '--tensorflow', help='Flag to indicate if the file is a tensorflow model.', nargs='?', const=True, default=False, type=bool ) 
-    parser.add_argument( '--models', help='Each model path.', nargs="*", required=True )
+    parser.add_argument( '--models', help='Each model path.', nargs="*" )
 
     parser.add_argument( '-i', '--input', help="Directory path of input images." )
     parser.add_argument( '-f', '--input_format', help="Format of input images.", nargs='?', const=True, default="jpg")
@@ -85,6 +85,11 @@ def main():
                     from kafka import KafkaConsumer, KafkaProducer
                     print( args.next_device )
 
+                    # https://kafka.apache.org/quickstart
+                    producer = KafkaProducer( bootstrap_servers=['localhost:9092'] )
+                    
+                    producer.send( 'test', "hola".encode() )
+                    producer.flush()
             else:
                 # If a model or models are passed as argument, it will inference using them in the order they are
                 # introduced and then send the result if a higher layer is specified.
@@ -115,10 +120,24 @@ def main():
                     # Here, models are loaded, but no data and so need to received and send it back.
                     if args.edge:
                         print( "EDGE" )
+                        if args.next_device:
+                            # Send data to FOG
+                            print( "to_cloud" )
+                        else:
+                            # Return result to device
+                            print( "to_device")
                     elif args.fog:
                         print( "FOG" )
+                        if args.next_device:
+                            # Send data to CLOUD
+                            print( "to_cloud" )
+                        else:
+                            # Return result to device
+                            print( "to_device")
                     elif args.cloud:
                         print( "CLOUD" )
+                        # Send result to device
+                        print( "to_device")
 
                 output( y, _y, timeit.default_timer() - start_global_time, times )
 
