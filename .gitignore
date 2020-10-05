@@ -137,3 +137,6 @@ dmypy.json
 # Data
 data/
 saved_models/
+
+# Kafka
+kafka*
