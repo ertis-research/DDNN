@@ -90,6 +90,17 @@ def main():
                     
                     producer.send( 'test', "hola".encode() )
                     producer.flush()
+                    # consumer = KafkaConsumer( bootstrap_servers=['localhost:9092'],
+                    #                         value_deserializer=lambda m: json.loads( m.decode() ),
+                    #                         auto_offset_reset='earliest',
+                    #                         enable_auto_commit=True,
+                    #                         auto_commit_interval_ms=1000,
+                    #                         group_id='edge'
+                    #                         )
+                    # consumer.subscribe(['fog_result'])
+                    # # Sent output to fog
+                    # producer.send( 'fog', json.dumps( edge_to_fog.tolist() ).encode() )
+                    # producer.flush()
             else:
                 # If a model or models are passed as argument, it will inference using them in the order they are
                 # introduced and then send the result if a higher layer is specified.
@@ -120,24 +131,90 @@ def main():
                     # Here, models are loaded, but no data and so need to received and send it back.
                     if args.edge:
                         print( "EDGE" )
+                        # consumer = KafkaConsumer( bootstrap_servers=['localhost:9092'],
+                        #                         value_deserializer=lambda m: json.loads( m.decode() ),
+                        #                         auto_offset_reset='earliest',
+                        #                         enable_auto_commit=True,
+                        #                         auto_commit_interval_ms=1000,
+                        #                         group_id='edge'
+                        #                         )
+                        # consumer.subscribe(['fog_result'])
+
+                        # TODO: PREDICT
+
                         if args.next_device:
                             # Send data to FOG
                             print( "to_cloud" )
-                        else:
-                            # Return result to device
-                            print( "to_device")
+                            producer = KafkaProducer( bootstrap_servers=['localhost:9092'] )
+                            producer.send( 'test', "hola".encode() )
+                            producer.flush()
+
+                            # WAIT FOR RESPONSE
+                            # consumer = KafkaConsumer( bootstrap_servers=['localhost:9092'],
+                            #                         value_deserializer=lambda m: json.loads( m.decode() ),
+                            #                         auto_offset_reset='earliest',
+                            #                         enable_auto_commit=True,
+                            #                         auto_commit_interval_ms=1000,
+                            #                         group_id='edge'
+                            #                         )
+                            # consumer.subscribe(['fog_result'])
+
+                        # Return result to device
+                        print( "to_device")
+                        producer = KafkaProducer( bootstrap_servers=['localhost:9092'] ) # To device
+                        producer.send( 'test', "hola".encode() )
+                        producer.flush()
                     elif args.fog:
                         print( "FOG" )
+                        # consumer = KafkaConsumer( bootstrap_servers=['localhost:9092'],
+                        #                         value_deserializer=lambda m: json.loads( m.decode() ),
+                        #                         auto_offset_reset='earliest',
+                        #                         enable_auto_commit=True,
+                        #                         auto_commit_interval_ms=1000,
+                        #                         group_id='edge'
+                        #                         )
+                        # consumer.subscribe(['fog_result'])
+
+                        # TODO: PREDICT
                         if args.next_device:
                             # Send data to CLOUD
                             print( "to_cloud" )
-                        else:
-                            # Return result to device
-                            print( "to_device")
+                            producer = KafkaProducer( bootstrap_servers=['localhost:9092'] )
+                            producer.send( 'test', "hola".encode() )
+                            producer.flush()
+
+                            # WAIT FOR RESPONSE
+                            # consumer = KafkaConsumer( bootstrap_servers=['localhost:9092'],
+                            #                         value_deserializer=lambda m: json.loads( m.decode() ),
+                            #                         auto_offset_reset='earliest',
+                            #                         enable_auto_commit=True,
+                            #                         auto_commit_interval_ms=1000,
+                            #                         group_id='edge'
+                            #                         )
+                            # consumer.subscribe(['fog_result'])
+                        # Return result to device
+                        print( "to_device")
+                        producer = KafkaProducer( bootstrap_servers=['localhost:9092'] )
+                        producer.send( 'test', "hola".encode() )
+                        producer.flush()
                     elif args.cloud:
                         print( "CLOUD" )
+                        # consumer = KafkaConsumer( bootstrap_servers=['localhost:9092'],
+                        #                         value_deserializer=lambda m: json.loads( m.decode() ),
+                        #                         auto_offset_reset='earliest',
+                        #                         enable_auto_commit=True,
+                        #                         auto_commit_interval_ms=1000,
+                        #                         group_id='edge'
+                        #                         )
+                        # consumer.subscribe(['fog_result'])
+
+                        # TODO: PREDICT
+                        
                         # Send result to device
                         print( "to_device")
+                        producer = KafkaProducer( bootstrap_servers=['localhost:9092'] )
+                        producer.send( 'test', "hola".encode() )
+                        producer.flush()
 
                 output( y, _y, timeit.default_timer() - start_global_time, times )
 
