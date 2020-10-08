@@ -243,57 +243,138 @@ def main():
                             producer.flush()
                 finally:
                     consumer.close()
+                    if args.next_device:
+                        consumer_next.close()
             elif args.fog:
-                print( "FOG" )
-                # consumer = KafkaConsumer( bootstrap_servers=['localhost:9092'],
-                #                         value_deserializer=lambda m: json.loads( m.decode() ),
-                #                         auto_offset_reset='earliest',
-                #                         enable_auto_commit=True,
-                #                         auto_commit_interval_ms=1000,
-                #                         group_id='edge'
-                #                         )
-                # consumer.subscribe(['fog_result'])
-
-                # TODO: PREDICT
-                if args.next_device:
-                    # Send data to CLOUD
-                    print( "to_cloud" )
-                    producer = KafkaProducer( bootstrap_servers=['localhost:9092'] )
-                    producer.send( 'test', "hola".encode() )
-                    producer.flush()
-
-                    # WAIT FOR RESPONSE
-                    # consumer = KafkaConsumer( bootstrap_servers=['localhost:9092'],
-                    #                         value_deserializer=lambda m: json.loads( m.decode() ),
-                    #                         auto_offset_reset='earliest',
-                    #                         enable_auto_commit=True,
-                    #                         auto_commit_interval_ms=1000,
-                    #                         group_id='edge'
-                    #                         )
-                    # consumer.subscribe(['fog_result'])
-                # Return result to device
-                print( "to_device")
-                producer = KafkaProducer( bootstrap_servers=['localhost:9092'] )
-                producer.send( 'test', "hola".encode() )
-                producer.flush()
-            elif args.cloud:
-                print( "CLOUD" )
-                # consumer = KafkaConsumer( bootstrap_servers=['localhost:9092'],
-                #                         value_deserializer=lambda m: json.loads( m.decode() ),
-                #                         auto_offset_reset='earliest',
-                #                         enable_auto_commit=True,
-                #                         auto_commit_interval_ms=1000,
-                #                         group_id='edge'
-                #                         )
-                # consumer.subscribe(['fog_result'])
-
-                # TODO: PREDICT
                 
-                # Send result to device
-                print( "to_device")
-                producer = KafkaProducer( bootstrap_servers=['localhost:9092'] )
-                producer.send( 'test', "hola".encode() )
-                producer.flush()
+                 ## Load models
+                models = []
+                for model_path in args.models:
+                    models.append( tf.keras.models.load_model( model_path ) )
+
+                if args.edge:
+                    print( "FOG" )
+
+                    producer = KafkaProducer( bootstrap_servers=['localhost:9092'] , max_request_size=1024000000)
+                    consumer = KafkaConsumer( 'from_edge_to_fog', bootstrap_servers=['localhost:9092'],
+                                            # value_deserializer=lambda m: json.loads( m.decode() ),
+                                            auto_offset_reset='earliest',
+                                            enable_auto_commit=True,
+                                            auto_commit_interval_ms=1000,
+                                            max_partition_fetch_bytes=1024000000,
+                                            group_id='fog'
+                                            )
+                    # consumer.subscribe([])
+                    if args.next_device:
+                        producer_next = KafkaProducer( bootstrap_servers=['localhost:9092'],  max_request_size=1024000000 )
+                        consumer_next = KafkaConsumer( bootstrap_servers=['localhost:9092'],
+                                            # value_deserializer=lambda m: json.loads( m.decode() ),
+                                            auto_offset_reset='earliest',
+                                            enable_auto_commit=True,
+                                            auto_commit_interval_ms=1000,
+                                            max_partition_fetch_bytes=1024000000,
+                                            group_id='fog'
+                                            )
+                        consumer_next.subscribe(['from_cloud_to_fog'])
+                    try:
+
+                        print( "Waiting for inputs...")
+                        print( consumer )
+                        for msg in consumer:
+
+                            if msg != {} or msg is not None:
+
+                                input_i = np.array( json.loads( msg.value.decode() ) )
+                                # print( "Input Received: ", input_i )
+                                start_prediction_time = timeit.default_timer()
+                                _x = input_i
+                                result_x = _x
+                                # print( models )
+                                for model in models:
+                                    # print( model )
+                                    _x = model.predict( _x )
+                                    if len( _x ) > 1:
+                                        if _x[-1:][0].max() >= args.threshold:
+                                            result_x = _x[-1:][0][0]
+                                            break
+                                    else:
+                                        result_x = _x[0][0]
+                                
+                                result = { "result": result_x.tolist(), "device": "fog", "time": timeit.default_timer() - start_prediction_time }
+                                if args.next_device:
+                                    # Send data to CLOUD
+                                    print( "to_cloud" )
+                                    producer_next.send( 'from_fog_to_cloud', json.dumps( _x[:-1].tolist() ).encode() )
+                                    producer_next.flush()
+
+                                    for m in consumer_next:
+                                        load_message = json.loads(m.value.decode())
+                                        if load_message != {} or load_message is not None:
+                                            if load_message.get("result", None) != None:
+                                                result["next"] = load_message
+                                                break
+
+                                # Return result to edge
+                                print( "to_edge:\n\t", result )
+                                producer.send( 'from_fog_to_edge', json.dumps( result ).encode() )
+                                producer.flush()
+                    finally:
+                        consumer.close()
+                        if args.next_device:
+                            consumer_next.close()
+
+            elif args.cloud:
+                 ## Load models
+                models = []
+                for model_path in args.models:
+                    models.append( tf.keras.models.load_model( model_path ) )
+                if args.edge:
+                    print( "CLOUD" )
+
+                    producer = KafkaProducer( bootstrap_servers=['localhost:9092'] , max_request_size=1024000000)
+                    consumer = KafkaConsumer( 'from_fog_to_cloud', bootstrap_servers=['localhost:9092'],
+                                            # value_deserializer=lambda m: json.loads( m.decode() ),
+                                            auto_offset_reset='earliest',
+                                            enable_auto_commit=True,
+                                            auto_commit_interval_ms=1000,
+                                            max_partition_fetch_bytes=1024000000,
+                                            group_id='cloud'
+                                            )
+                    
+                    try:
+
+                        print( "Waiting for inputs...")
+                        print( consumer )
+                        for msg in consumer:
+
+                            if msg != {} or msg is not None:
+
+                                input_i = np.array( json.loads( msg.value.decode() ) )
+                                # print( "Input Received: ", input_i )
+                                start_prediction_time = timeit.default_timer()
+                                _x = input_i
+                                result_x = _x
+                                # print( models )
+                                for model in models:
+                                    # print( model )
+                                    _x = model.predict( _x )
+                                    if len( _x ) > 1:
+                                        if _x[-1:][0].max() >= args.threshold:
+                                            result_x = _x[-1:][0][0]
+                                            break
+                                    else:
+                                        result_x = _x[0][0]
+                                
+                                result = { "result": result_x.tolist(), "device": "cloud", "time": timeit.default_timer() - start_prediction_time }
+                                
+                                # Return result to device
+                                print( "to_fog:\n\t", result )
+                                producer.send( 'from_cloud_to_fog', json.dumps( result ).encode() )
+                                producer.flush()
+                    finally:
+                        consumer.close()
+                        if args.next_device:
+                            consumer_next.close()
             else:
                 error_input( parser, 2 )
 
