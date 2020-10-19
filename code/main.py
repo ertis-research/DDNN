@@ -225,7 +225,7 @@ def main():
                             else:
                                 result_x = _x[0]
                         
-                        result = { "result": result_x.tolist(), "device": args.name, "time": timeit.default_timer() - start_prediction_time }
+                        result = { "result": result_x.tolist(), "device": args.name, "execution-time": timeit.default_timer() - start_prediction_time }
                         if args.producer_front and args.producer_front_port and \
                             args.consumer_front and args.consumer_front_port:
 
@@ -244,6 +244,7 @@ def main():
                                         result["next"] = load_message
                                         break
 
+                        result["total-time"] = timeit.default_timer() - start_prediction_time
                         # Return result to device
                         producer.send( args.producer_back_topic, json.dumps( result ).encode() )
                         producer.flush()
