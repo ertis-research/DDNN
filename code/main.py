@@ -145,27 +145,26 @@ def main():
                 models = []
                 for model_path in args.models:
                     models.append( tf.keras.models.load_model( model_path ) )
+                
+                ## Inference
+                _y = []
+                start_global_time = timeit.default_timer()
+                times = []
+                for input_i in x:
 
-                if not args.edge and not args.fog and not args.cloud:
-                    ## Inference
-                    _y = []
-                    start_global_time = timeit.default_timer()
-                    times = []
-                    for input_i in x:
+                    start_prediction_time = timeit.default_timer()
+                    _x = input_i
+                    for model in models:
+                        _x = model.predict( _x )
+                        if len( _x ) > 1:
+                            # print(_x[-1:][0][0] )
+                            if _x[-1:][0].max() >= args.threshold:
+                                _x = _x[-1:][0][0]
+                                break
+                    _y.append( _x )
+                    times.append( timeit.default_timer() - start_prediction_time )
 
-                        start_prediction_time = timeit.default_timer()
-                        _x = input_i
-                        for model in models:
-                            _x = model.predict( _x )
-                            if len( _x ) > 1:
-                                # print(_x[-1:][0][0] )
-                                if _x[-1:][0].max() >= args.threshold:
-                                    _x = _x[-1:][0][0]
-                                    break
-                        _y.append( _x )
-                        times.append( timeit.default_timer() - start_prediction_time )
-
-                    output( y, _y, timeit.default_timer() - start_global_time, times )
+                output( y, _y, timeit.default_timer() - start_global_time, times )
     else:
         # Here, models are loaded, but no data and so need to received and send it back.
         from kafka import KafkaConsumer, KafkaProducer

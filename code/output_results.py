@@ -15,14 +15,17 @@ def output( expected_results, results, global_time, prediction_times ):
         f.write("\n")
         for i, values in enumerate( zip(expected_results, results, prediction_times) ):
             
-            result = values[1].value
+            if not isinstance(values[1], list) and not isinstance(values[1], np.ndarray):
+                result = values[1].value
+            else:
+                result = { "result": values[1][0][0] }
             next_device = result.get("next", {})
             next_next_device = next_device.get("next", {})
 
             f.write( row.format(
                 i, values[0].argmax(), values[2],
-                np.array( result.get("result", []) ).argmax() if result.get("result", []) else "", result.get("execution-time", ""), result.get("total-time", ""),
-                np.array( next_device.get("result", []) ).argmax() if next_device.get("result", []) else "", next_device.get("execution-time", ""), next_device.get("total-time", ""),
-                np.array( next_next_device.get("result", []) ).argmax() if next_next_device.get("result", []) else "", next_next_device.get("execution-time", ""), next_next_device.get("total-time", "") 
+                np.array( result.get("result", []) ).argmax() if len( result.get("result", []) ) > 0 else "", result.get("execution-time", ""), result.get("total-time", ""),
+                np.array( next_device.get("result", []) ).argmax() if len( next_device.get("result", []) ) > 0 else "", next_device.get("execution-time", ""), next_device.get("total-time", ""),
+                np.array( next_next_device.get("result", []) ).argmax() if len( next_next_device.get("result", []) ) > 0 else "", next_next_device.get("execution-time", ""), next_next_device.get("total-time", "") 
             ))        
             f.write("\n")
