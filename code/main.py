@@ -263,6 +263,8 @@ if __name__ == '__main__':
 # python code/main.py -i data/flower_photos/train -l data/labels.txt --name device --producer-front localhost --producer-front-port 9092 --producer-front-topic from_device_to_edge --consumer-front localhost --consumer-front-port 9092 --consumer-front-topic from_edge_to_device
 
 # python code/main.py --models saved_models/edge --name local_edge --producer-back-topic from_edge_to_device --consumer-back-topic from_device_to_edge --producer-front localhost --producer-front-port 9092 --producer-front-topic from_edge_to_fog --consumer-front localhost --consumer-front-port 9092 --consumer-front-topic from_fog_to_edge --tensorflow
+# python code/main.py --models saved_models/edge saved_models/fog saved_models/cloud --name local_edge --producer-back-topic from_edge_to_device --consumer-back-topic from_device_to_edge --tensorflow
+# 192.168.48.159
 
 # python code/main.py --models saved_models/fog --name local_fog --producer-back-topic from_fog_to_edge --consumer-back-topic from_edge_to_fog --producer-front localhost --producer-front-port 9092 --producer-front-topic from_fog_to_cloud --consumer-front localhost --consumer-front-port 9092 --consumer-front-topic from_cloud_to_fog --tensorflow
 # python code/main.py --models saved_models/fog saved_models/cloud --name local_fog --producer-back-topic from_fog_to_edge --consumer-back-topic from_edge_to_fog --tensorflow
