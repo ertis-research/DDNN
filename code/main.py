@@ -214,19 +214,21 @@ def main():
                         _x = input_i
                         result_x = _x
                         # print( models )
+                        ended = False
                         for model in models:
                             # print( model )
                             _x = model.predict( _x )
                             if len( _x ) > 1:
                                 if _x[-1:][0].max() >= args.threshold:
                                     result_x = _x[-1:][0]
+                                    ended = True
                                     break
                             else:
                                 result_x = _x[0]
                         
                         result = { "result": result_x.tolist(), "device": args.name, "execution-time": timeit.default_timer() - start_prediction_time }
                         if args.producer_front and args.producer_front_port and \
-                            args.consumer_front and args.consumer_front_port:
+                            args.consumer_front and args.consumer_front_port and not ended:
 
                             producer_next.send( args.producer_front_topic, json.dumps( _x[:-1][0].tolist() ).encode() )
                             producer_next.flush()
