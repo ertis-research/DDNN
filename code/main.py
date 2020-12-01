@@ -44,6 +44,7 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument( '--tensorflow', help='Flag to indicate if the file is a tensorflow model.', nargs='?', const=True, default=False, type=bool ) 
+    parser.add_argument( '--cifar10', help='Flag to indicate if using cifar10 dataset.', nargs='?', const=True, default=False, type=bool ) 
     parser.add_argument( '--models', help='Each model path.', nargs="*" )
 
     parser.add_argument( '-i', '--input', help="Directory path of input images." )
@@ -165,6 +166,85 @@ def main():
                     times.append( timeit.default_timer() - start_prediction_time )
 
                 output( y, _y, timeit.default_timer() - start_global_time, times )
+    elif args.cifar10:
+        
+        _, (x, y) = tf.keras.datasets.cifar10.load_data()
+
+        # model inference
+        if not args.models:
+            # If no model is passed, this code will only pass data after preprocessing them and
+            # recover the output of another model in a higher layer of the architecture.
+            if not (args.producer_front and args.producer_front_port and \
+                args.consumer_front and args.consumer_front_port):
+                error_input( parser, 1 )
+            else:
+
+                from kafka import KafkaConsumer, KafkaProducer
+
+                # At this step, this code should send values and wait for response of these values.
+                # print( args.next_device )
+                
+                # https://kafka.apache.org/quickstart
+                producer = KafkaProducer( bootstrap_servers=["{}:{}".format( args.producer_front, args.producer_front_port )], max_request_size=1024000000 )
+                consumer = KafkaConsumer( args.consumer_front_topic, bootstrap_servers=["{}:{}".format( args.consumer_front, args.consumer_front_port )],
+                                        value_deserializer=lambda m: json.loads( m.decode() ),
+                                        auto_offset_reset='earliest',
+                                        enable_auto_commit=True,
+                                        auto_commit_interval_ms=1,
+                                        max_partition_fetch_bytes=1024000000,
+                                        group_id=args.name
+                                        )
+
+                ## Inference
+                try:
+                    
+                    _y = []
+                    start_global_time = timeit.default_timer()
+                    times = []
+                    print( "Total to be sent: {}".format( len(x) ) )
+                    for input_i in x:
+
+                        start_prediction_time = timeit.default_timer()
+                        producer.send( args.producer_front_topic, json.dumps( input_i.tolist() ).encode() )
+                        producer.flush()
+                        print( "Message sent." )
+                        for msg in consumer:
+                            if msg != {} or msg is not None:           
+                                _y.append( msg )
+                                break
+                        times.append( timeit.default_timer() - start_prediction_time )
+                        print( "result:\n\t", _y[-1:], "\ntotal time:", times[-1:] )
+                    output( y, _y, timeit.default_timer() - start_global_time, times )
+                finally:
+                    consumer.close()
+        else:
+            # If a model or models are passed as argument, it will inference using them in the order they are
+            # introduced and then send the result if a higher layer is specified.
+
+            ## Load models
+            models = []
+            for model_path in args.models:
+                models.append( tf.keras.models.load_model( model_path ) )
+            
+            ## Inference
+            _y = []
+            start_global_time = timeit.default_timer()
+            times = []
+            for input_i in x:
+
+                start_prediction_time = timeit.default_timer()
+                _x = input_i
+                for model in models:
+                    _x = model.predict( _x )
+                    if len( _x ) > 1:
+                        # print(_x[-1:][0][0] )
+                        if _x[-1:][0].max() >= args.threshold:
+                            _x = _x[-1:][0][0]
+                            break
+                _y.append( _x )
+                times.append( timeit.default_timer() - start_prediction_time )
+
+            output( y, _y, timeit.default_timer() - start_global_time, times )
     else:
         # Here, models are loaded, but no data and so need to received and send it back.
         from kafka import KafkaConsumer, KafkaProducer
