@@ -116,7 +116,7 @@ This project is an extension of Kafka-ML [[4]]. Kafka-ML is a framework to manag
 
 ML models can be easily defined in the Web UI with no need for external libraries and executions, providing an accessible tool for both experts and non-experts on ML.
 
-You can find more information about [Kafka-ML Github repository](https://github.com/ertis-research/kafka-ml).
+You can find more information about [Kafka-ML in its Github repository](https://github.com/ertis-research/kafka-ml).
 
 ----
 
