@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: solo-cloud
+  name: solo-cloud
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: pod-solo-cloud
+  template:
+    metadata:
+      labels:
+        name: pod-solo-cloud
+      name: solo-cloud
+    spec:
+      containers:
+      - image: ruiz14/solo-cloud:test
+        name: solo-cloud
+        ports:
+        - containerPort: 8000
+        imagePullPolicy: Always
+        env:
+        - name: GROUP_ID
+          value: SOLOCLOUD
+        - name: PRODUCER_BACK
+          value: kafka-cluster:9092,kafka-cluster-2:9092,kafka-cluster-3:9092
+        - name: PRODUCER_BACK_TOPIC
+          value: clouddevice
+        - name: CONSUMER_BACK
+          value: kafka-cluster:9092,kafka-cluster-2:9092,kafka-cluster-3:9092
+        - name: CONSUMER_BACK_TOPIC
+          value: devicecloud
+        resources: {}

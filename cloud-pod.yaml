@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: cloud
+  name: cloud
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: pod-cloud
+  template:
+    metadata:
+      labels:
+        name: pod-cloud
+      name: cloud
+    spec:
+      containers:
+      - image: ruiz14/cloud:test
+        name: cloud
+        ports:
+        - containerPort: 8000
+        imagePullPolicy: Always
+        env:
+        - name: GROUP_ID
+          value: CLOUD
+        - name: PRODUCER_BACK
+          value: kafka-cluster:9092
+        - name: PRODUCER_BACK_TOPIC
+          value: cloudedge
+        - name: CONSUMER_BACK
+          value: kafka-cluster:9092
+        - name: CONSUMER_BACK_TOPIC
+          value: edgecloud
+        resources: {}

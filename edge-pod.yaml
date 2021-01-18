@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: edge
+  name: edge
+spec:
+  replicas: 8
+  selector:
+    matchLabels:
+      name: pod-edge
+  template:
+    metadata:
+      labels:
+        name: pod-edge
+      name: edge
+    spec:
+      containers:
+      - image: ruiz14/edge:test
+        name: edge
+        ports:
+        - containerPort: 8000
+        imagePullPolicy: Always
+        env:
+        - name: GROUP_ID
+          value: EDGE
+        - name: PRODUCER_BACK
+          value: kafka-cluster:9092,kafka-cluster-2:9092,kafka-cluster-3:9092
+        - name: PRODUCER_BACK_TOPIC
+          value: edgedevice
+        - name: PRODUCER_FRONT
+          value: 34.76.212.230:9094,34.77.105.77:9095,34.77.199.104:9096
+        - name: PRODUCER_FRONT_TOPIC
+          value: edgecloud
+        - name: CONSUMER_BACK
+          value: kafka-cluster:9092,kafka-cluster-2:9092,kafka-cluster-3:9092
+        - name: CONSUMER_BACK_TOPIC
+          value: deviceedge
+        - name: CONSUMER_FRONT
+          value: 34.76.212.230:9094,34.77.105.77:9095,34.77.199.104:9096
+        - name: CONSUMER_FRONT_TOPIC
+          value: cloudedge
+        resources: {}

@@ -8,6 +8,7 @@ import pathlib
 import timeit
 import json
 import numpy as np
+import logging
 
 # References:
 # https://www.tensorflow.org/tutorials/images/classification
@@ -48,6 +49,7 @@ def main():
     parser.add_argument( '--models', help='Each model path.', nargs="*" )
 
     parser.add_argument( '-i', '--input', help="Directory path of input images." )
+    parser.add_argument( '-o', '--output', help="Directory path of output results.", default="results.csv")
     parser.add_argument( '-f', '--input_format', help="Format of input images.", nargs='?', const=True, default="jpg")
     parser.add_argument( '-l', '--labels', help="File path of labels file." )
     parser.add_argument( '--height', help="", default=180 )
@@ -56,17 +58,17 @@ def main():
     parser.add_argument( '--name', help="Name of the device.", required=True )
 
     parser.add_argument( '--producer-back', help="IP to send values to the previous device.", default="localhost" )
-    parser.add_argument( '--producer-back-port', help="Port to send values to the previous device.", default="9092" )
+    # parser.add_argument( '--producer-back-port', help="Port to send values to the previous device.", default="9092" )
     parser.add_argument( '--producer-back-topic', help="Topic to send values to the previous device." )
     parser.add_argument( '--producer-front', help="IP to send values to the next device." )
-    parser.add_argument( '--producer-front-port', help="Port to send values to the next device." )
+    # parser.add_argument( '--producer-front-port', help="Port to send values to the next device." )
     parser.add_argument( '--producer-front-topic', help="Topic to send values to the previous device." )
     
     parser.add_argument( '--consumer-back', help="IP to receive values from the previous device.", default="localhost" )
-    parser.add_argument( '--consumer-back-port', help="Port to send values to the previous device", default="9092" )
+    # parser.add_argument( '--consumer-back-port', help="Port to send values to the previous device", default="9092" )
     parser.add_argument( '--consumer-back-topic', help="Topic to send values to the previous device" )
     parser.add_argument( '--consumer-front', help="IP to receive values from the next device." )
-    parser.add_argument( '--consumer-front-port', help="Port to send values to the next device." )
+    # parser.add_argument( '--consumer-front-port', help="Port to send values to the next device." )
     parser.add_argument( '--consumer-front-topic', help="Topic to send values to the previous device" )
 
     parser.add_argument( '-t', '--threshold', help="Minimum value to be accepted as a correct value.", type=float, default=0.8)
@@ -74,7 +76,7 @@ def main():
 
     if args.tensorflow:
         import tensorflow as tf
-        print( "\tNOTE: Using Tensorflow {}.".format( tf.__version__ ) )
+        logging.warning( "\tNOTE: Using Tensorflow {}.".format( tf.__version__ ) )
     # else:
     #     https://www.tensorflow.org/lite/guide/python
     #     import tflite_runtime.interpreter as tflite
@@ -95,8 +97,7 @@ def main():
             if not args.models:
                 # If no model is passed, this code will only pass data after preprocessing them and
                 # recover the output of another model in a higher layer of the architecture.
-                if not (args.producer_front and args.producer_front_port and \
-                    args.consumer_front and args.consumer_front_port):
+                if not (args.producer_front and args.consumer_front):
                     error_input( parser, 1 )
                 else:
 
@@ -106,16 +107,20 @@ def main():
                     # print( args.next_device )
                     
                     # https://kafka.apache.org/quickstart
-                    producer = KafkaProducer( bootstrap_servers=["{}:{}".format( args.producer_front, args.producer_front_port )], max_request_size=1024000000 )
-                    consumer = KafkaConsumer( args.consumer_front_topic, bootstrap_servers=["{}:{}".format( args.consumer_front, args.consumer_front_port )],
+                    producer = KafkaProducer( bootstrap_servers=args.producer_front, max_request_size=1024000000 )
+                    consumer = KafkaConsumer( args.consumer_front_topic, bootstrap_servers=args.consumer_front,
                                             value_deserializer=lambda m: json.loads( m.decode() ),
                                             auto_offset_reset='earliest',
-                                            enable_auto_commit=True,
-                                            auto_commit_interval_ms=1,
+                                            request_timeout_ms=305000,
+                                            max_poll_interval_ms=300000,
+                                            session_timeout_ms=180000,
+                                            heartbeat_interval_ms=6000,
+                                            metadata_max_age_ms=50000,
+                                            # enable_auto_commit=True,
+                                            # auto_commit_interval_ms=1,
                                             max_partition_fetch_bytes=1024000000,
-                                            group_id=args.name
+                                            # group_id=args.name
                                             )
-    
                     ## Inference
                     try:
                         
@@ -135,7 +140,7 @@ def main():
                                     break
                             times.append( timeit.default_timer() - start_prediction_time )
                             print( "result:\n\t", _y[-1:], "\ntotal time:", times[-1:] )
-                        output( y, _y, timeit.default_timer() - start_global_time, times )
+                        output( y, _y, timeit.default_timer() - start_global_time, times, args.output )
                     finally:
                         consumer.close()
             else:
@@ -165,17 +170,16 @@ def main():
                     _y.append( _x )
                     times.append( timeit.default_timer() - start_prediction_time )
 
-                output( y, _y, timeit.default_timer() - start_global_time, times )
+                output( y, _y, timeit.default_timer() - start_global_time, times, args.output )
     elif args.cifar10:
         
         _, (x, y) = tf.keras.datasets.cifar10.load_data()
-
+        x = x/255.
         # model inference
         if not args.models:
             # If no model is passed, this code will only pass data after preprocessing them and
             # recover the output of another model in a higher layer of the architecture.
-            if not (args.producer_front and args.producer_front_port and \
-                args.consumer_front and args.consumer_front_port):
+            if not (args.producer_front and args.consumer_front):
                 error_input( parser, 1 )
             else:
 
@@ -185,14 +189,19 @@ def main():
                 # print( args.next_device )
                 
                 # https://kafka.apache.org/quickstart
-                producer = KafkaProducer( bootstrap_servers=["{}:{}".format( args.producer_front, args.producer_front_port )], max_request_size=1024000000 )
-                consumer = KafkaConsumer( args.consumer_front_topic, bootstrap_servers=["{}:{}".format( args.consumer_front, args.consumer_front_port )],
+                producer = KafkaProducer( bootstrap_servers=args.producer_front, max_request_size=1024000000 )
+                consumer = KafkaConsumer( args.consumer_front_topic, bootstrap_servers=args.consumer_front,
                                         value_deserializer=lambda m: json.loads( m.decode() ),
                                         auto_offset_reset='earliest',
-                                        enable_auto_commit=True,
-                                        auto_commit_interval_ms=1,
+                                        request_timeout_ms=305000,
+                                        max_poll_interval_ms=300000,
+                                        session_timeout_ms=180000,
+                                        heartbeat_interval_ms=6000,
+                                        metadata_max_age_ms=50000,
+                                        # enable_auto_commit=True,
+                                        # auto_commit_interval_ms=1,
                                         max_partition_fetch_bytes=1024000000,
-                                        group_id=args.name
+                                        # group_id=args.name
                                         )
 
                 ## Inference
@@ -205,16 +214,17 @@ def main():
                     for input_i in x:
 
                         start_prediction_time = timeit.default_timer()
-                        producer.send( args.producer_front_topic, json.dumps( input_i.tolist() ).encode() )
+                        producer.send( args.producer_front_topic, json.dumps( input_i.reshape(1, 32, 32, 3).tolist() ).encode() )
                         producer.flush()
                         print( "Message sent." )
+                        print( consumer )
                         for msg in consumer:
                             if msg != {} or msg is not None:           
                                 _y.append( msg )
                                 break
                         times.append( timeit.default_timer() - start_prediction_time )
                         print( "result:\n\t", _y[-1:], "\ntotal time:", times[-1:] )
-                    output( y, _y, timeit.default_timer() - start_global_time, times )
+                    output( y, _y, timeit.default_timer() - start_global_time, times, args.output)
                 finally:
                     consumer.close()
         else:
@@ -226,25 +236,86 @@ def main():
             for model_path in args.models:
                 models.append( tf.keras.models.load_model( model_path ) )
             
+            producer = KafkaProducer( bootstrap_servers=args.producer_front, max_request_size=1024000000 )
+            consumer = KafkaConsumer( args.consumer_front_topic, bootstrap_servers=args.consumer_front,
+                                    value_deserializer=lambda m: json.loads( m.decode() ),
+                                    auto_offset_reset='earliest',
+                                    request_timeout_ms=305000,
+                                    max_poll_interval_ms=300000,
+                                    session_timeout_ms=180000,
+                                    heartbeat_interval_ms=6000,
+                                    metadata_max_age_ms=50000,
+                                    # enable_auto_commit=True,
+                                    # auto_commit_interval_ms=1,
+                                    max_partition_fetch_bytes=1024000000,
+                                    # group_id=args.name
+                                    )
+
             ## Inference
-            _y = []
-            start_global_time = timeit.default_timer()
-            times = []
-            for input_i in x:
+            try:
+                
+                _y = []
+                start_global_time = timeit.default_timer()
+                times = []
+                print( "Total to be sent CIFAR: {}".format( len(x) ) )
+                for input_i in x:
 
-                start_prediction_time = timeit.default_timer()
-                _x = input_i
-                for model in models:
-                    _x = model.predict( _x )
-                    if len( _x ) > 1:
-                        # print(_x[-1:][0][0] )
-                        if _x[-1:][0].max() >= args.threshold:
-                            _x = _x[-1:][0][0]
-                            break
-                _y.append( _x )
-                times.append( timeit.default_timer() - start_prediction_time )
+                    start_prediction_time = timeit.default_timer()
 
-            output( y, _y, timeit.default_timer() - start_global_time, times )
+                    _x = input_i.reshape( 1, 32, 32, 3 )
+                    result_x = _x
+                    # print( models )
+                    ended = False
+                    for model in models:
+                        # print( model )
+                        _x = model.predict( _x )
+                        if len( _x ) > 1:
+                            if _x[-1:][0].max() >= args.threshold:
+                                result_x = _x[-1:][0]
+                                ended = True
+                                break
+                        else:
+                            result_x = _x[0]
+                    
+                    result = { "result": result_x.tolist(), "device": args.name, "execution-time": timeit.default_timer() - start_prediction_time }
+                    if args.producer_front and args.consumer_front and not ended:
+
+                        producer.send( args.producer_front_topic, json.dumps( _x.tolist() ).encode() )
+                        producer.flush()
+                        print( "Message sent." )
+                        for msg in consumer:
+                            if msg != {} or msg is not None:           
+                                _y.append( msg )
+                                break
+                        times.append( timeit.default_timer() - start_prediction_time )
+                        print( "result:\n\t", _y[-1:], "\ntotal time:", times[-1:] )
+
+                    result["total-time"] = timeit.default_timer() - start_prediction_time
+                    
+                _y = result
+                output( y, _y, timeit.default_timer() - start_global_time, times, args.output )
+            finally:
+                consumer.close()
+
+            ## Inference
+            # _y = []
+            # start_global_time = timeit.default_timer()
+            # times = []
+            # for input_i in x:
+
+            #     start_prediction_time = timeit.default_timer()
+            #     _x = input_i
+            #     for model in models:
+            #         _x = model.predict( _x )
+            #         if len( _x ) > 1:
+            #             # print(_x[-1:][0][0] )
+            #             if _x[-1:][0].max() >= args.threshold:
+            #                 _x = _x[-1:][0][0]
+            #                 break
+            #     _y.append( _x )
+            #     times.append( timeit.default_timer() - start_prediction_time )
+
+            # output( y, _y, timeit.default_timer() - start_global_time, times, args.output )
     else:
         # Here, models are loaded, but no data and so need to received and send it back.
         from kafka import KafkaConsumer, KafkaProducer
@@ -253,43 +324,58 @@ def main():
             error_input( parser, 3 )
         else:
 
+            logging.warning( "LOADING MODELS" )
             ## Load models
             models = []
             for model_path in args.models:
                 models.append( tf.keras.models.load_model( model_path ) )
-
-            producer = KafkaProducer( bootstrap_servers=["{}:{}".format( args.producer_back, args.producer_back_port )] , max_request_size=1024000000)
-            consumer = KafkaConsumer( args.consumer_back_topic, bootstrap_servers=["{}:{}".format( args.consumer_back, args.consumer_back_port )],
+            
+            logging.warning( "MODELS LOADED." )
+            producer = KafkaProducer( bootstrap_servers=args.producer_back, max_request_size=1024000000)
+            consumer = KafkaConsumer( args.consumer_back_topic, bootstrap_servers=args.consumer_back,
                                     # value_deserializer=lambda m: json.loads( m.decode() ),
                                     auto_offset_reset='earliest',
-                                    enable_auto_commit=True,
-                                    auto_commit_interval_ms=1,
+                                    request_timeout_ms=305000,
+                                    max_poll_interval_ms=300000,
+                                    session_timeout_ms=180000,
+                                    heartbeat_interval_ms=6000,
+                                    metadata_max_age_ms=50000,
+                                    # enable_auto_commit=True,
+                                    # auto_commit_interval_ms=1,
                                     max_partition_fetch_bytes=1024000000,
-                                    group_id=args.name
+                                    # group_id=args.name
                                     )
             # consumer.subscribe([])
-            if args.producer_front and args.producer_front_port and \
-                args.consumer_front and args.consumer_front_port:
-                producer_next = KafkaProducer( bootstrap_servers=["{}:{}".format( args.producer_front, args.producer_front_port )],  max_request_size=1024000000 )
-                consumer_next = KafkaConsumer( args.consumer_front_topic, bootstrap_servers=["{}:{}".format( args.consumer_front, args.consumer_front_port )],
+            logging.warning( "READY TO RECEIVE VALUES" )
+            if args.producer_front and args.consumer_front:
+                logging.warning( "PREPARING TO SEND VALUES" )
+                producer_next = KafkaProducer( bootstrap_servers=args.producer_front,  max_request_size=1024000000 )
+                consumer_next = KafkaConsumer( args.consumer_front_topic, bootstrap_servers=args.consumer_front,
                                     # value_deserializer=lambda m: json.loads( m.decode() ),
                                     auto_offset_reset='earliest',
-                                    enable_auto_commit=True,
-                                    auto_commit_interval_ms=1,
+                                    request_timeout_ms=305000,
+                                    max_poll_interval_ms=300000,
+                                    session_timeout_ms=180000,
+                                    heartbeat_interval_ms=3000,
+                                    metadata_max_age_ms=1000,
+                                    # enable_auto_commit=True,
+                                    # auto_commit_interval_ms=1,
                                     max_partition_fetch_bytes=1024000000,
-                                    group_id=args.name
-                                    )
+                                    # group_id=args.name
+                                )
+                logging.warning( "READY TO SEND VALUES" )
 
             try:
 
-                print( "Waiting for inputs...")
-                print( consumer )
+                logging.warning( "Waiting for inputs...")
+                logging.warning( consumer )
                 for msg in consumer:
 
                     if msg != {} or msg is not None:
                         
+                        print( msg.value )
                         input_i = np.array( json.loads( msg.value.decode() ) )
-                        print( "Input Received" )
+                        logging.warning( "Input Received" )
                         start_prediction_time = timeit.default_timer()
                         _x = input_i
                         result_x = _x
@@ -305,23 +391,22 @@ def main():
                                     break
                             else:
                                 result_x = _x[0]
-                        
+
                         result = { "result": result_x.tolist(), "device": args.name, "execution-time": timeit.default_timer() - start_prediction_time }
-                        if args.producer_front and args.producer_front_port and \
-                            args.consumer_front and args.consumer_front_port and not ended:
+                        if args.producer_front and args.consumer_front and not ended:
 
                             producer_next.send( args.producer_front_topic, json.dumps( _x[:-1][0].tolist() ).encode() )
                             producer_next.flush()
-                            print( "Sent front:\n\t", result )
+                            logging.warning( "Sent front:\n\t{}".format( result ) )
 
-                            print( consumer_next )
+                            logging.warning( consumer_next )
                             for m in consumer_next:
-                                print( "Received: {}".format(m) )
+                                logging.warning( "Received: {}".format(m) )
                                 load_message = json.loads(m.value.decode())
-                                print( "Received: {}".format(load_message))
+                                logging.warning( "Received: {}".format(load_message))
                                 if load_message != {} or load_message is not None:
                                     if load_message.get("result", None) != None:
-                                        print( "Received:\n\t", result )
+                                        logging.warning( "Received:\n\t{}".format(result) )
                                         result["next"] = load_message
                                         break
 
@@ -329,12 +414,11 @@ def main():
                         # Return result to device
                         producer.send( args.producer_back_topic, json.dumps( result ).encode() )
                         producer.flush()
-                        print( "Sent back:\n\t", result )
+                        logging.warning( "Sent back:\n\t{}".format(result) )
             finally:
-                print( "Closing ")
+                logging.warning( "Closing ")
                 consumer.close()
-                if args.producer_front and args.producer_front_port and \
-                    args.consumer_front and args.consumer_front_port:
+                if args.producer_front and args.consumer_front:
                     consumer_next.close()
 
 if __name__ == '__main__':

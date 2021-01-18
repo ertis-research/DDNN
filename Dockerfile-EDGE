@@ -1,0 +1,12 @@
+FROM tensorflow/tensorflow:2.3.0
+
+WORKDIR /usr/src/app
+
+COPY code /usr/src/app/code
+COPY Distributed_vgg16-2/EDGE /usr/src/app/models/EDGE
+
+RUN pip install --upgrade pip
+COPY requirements.txt /usr/src/app/requirements.txt
+RUN pip install -r /usr/src/app/requirements.txt
+
+CMD python code/main.py --tensorflow --models /usr/src/app/models/EDGE --name $GROUP_ID --producer-back $PRODUCER_BACK --producer-back-topic $PRODUCER_BACK_TOPIC --producer-front $PRODUCER_FRONT --producer-front-topic $PRODUCER_FRONT_TOPIC --consumer-back $CONSUMER_BACK --consumer-back-topic $CONSUMER_BACK_TOPIC --consumer-front $CONSUMER_FRONT --consumer-front-topic $CONSUMER_FRONT_TOPIC
