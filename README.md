@@ -102,7 +102,7 @@ These container can be built as follows:
 
 ### Service deployment in Kubernetes
 
-Since this code can be containerized, it can be easily run as a service in Kubernetes. Therefore, we include several `yaml` files that can be used to deploy an edge-cloud architecture with 3 Kafka brokers. Along with these files, we include to additional ones that are used to run and delete these services in Kubernetes; these are `run.sh` and `delete.sh` respectively.
+Since this code can be containerized, it can be easily run as a service in Kubernetes. Therefore, we include several `yaml` files that can be used to deploy an edge-cloud architecture with 3 Kafka brokers. Along with these files, we include two additional ones that are used to run and delete these services in Kubernetes - `run.sh` and `delete.sh`, respectively.
 
     sh run.sh
     sh delete.sh
