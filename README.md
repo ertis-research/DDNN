@@ -1,6 +1,15 @@
-# Run your model in an edge-fog-cloud architecture
+# A low-latency and fault-tolerant framework for Distributed and Deep Neural Networks over the Cloud-to-Things Continuum.
 
-This code has been developed to facilitate the inference of BranchyNet-based models [[1]][[2]] over different architecture levels, such as edge, fog and cloud. 
+This work combines the advantages of the BranchyNet [[1]][[2]] approach with the edge-cloud architecture concept to support low-latency and fault-tolerant predictions. Thus, this code has been developed to facilitate the inference of BranchyNet-based models over different architecture levels, such as edge, fog and cloud by using Kafka, Python and Tensorflow. 
+
+![Concept](images/ddnn.png)
+
+##### Table of Content
+
+1. [Getting started](#getting-started)
+2. [Docker Containerized Version](#docker-containerized-version)
+
+    2.1. [Service deployment in Kubernetes](#service-deployment-in-kubernetes)
 
 ## Getting started
 
@@ -77,9 +86,28 @@ This will generate a CSV file according with our `output_results.py` function. H
     python code/main.py --models saved_models/edge saved_models/fog saved_models/cloud --name local_edge --producer-back-topic from_edge_to_device --consumer-back-topic from_device_to_edge --tensorflow
     ```
 
-## Contributions
+## Docker Containerized Version
 
-We are still working on this code to make it more useful and practical for the scientific community. We thank any feedback and contribution to our project.
+We provide three files, `Dockerfile-CLOUD`, `Dockerfile-EDGE`, and `Dockerfile-only-cloud`, as an example of how to use our code with Docker Containers. 
+
+All of them use the models in `Distributed_vgg16-2` folder. The main model, which is the one used to train, is `FULL_MODEL`, and it contains the rest of submodels in this folder. The first dockerfile mentioned runs the main code with the `FOG` and `CLOUD` submodels, while the second one only use the `EDGE` submodel. The last of them, `Dockerfile-only-cloud`, use the three submodels as one like the `FULL_MODEL` does.
+
+These container can be built as follows:
+
+    docker build --pull --rm -f "Dockerfile-CLOUD" -t cloud:test "."
+
+    docker build --pull --rm -f "Dockerfile-EDGE" -t edge:test "."
+
+    docker build --pull --rm -f "Dockerfile-only-cloud" -t solo-cloud:test "."
+
+### Service deployment in Kubernetes
+
+Since this code can be containerized, it can be easily run as a service in Kubernetes. Therefore, we include several `yaml` files that can be used to deploy an edge-cloud architecture with 3 Kafka brokers. Along with these files, we include to additional ones that are used to run and delete these services in Kubernetes; these are `run.sh` and `delete.sh` respectively.
+
+    sh run.sh
+    sh delete.sh
+
+These files can be modified to fit different architecture configurations.
 
 ----
 

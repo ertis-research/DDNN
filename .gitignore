@@ -138,6 +138,3 @@ dmypy.json
 data/
 saved_models*
 results.csv
-
-# Kafka
-kafka*
