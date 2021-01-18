@@ -10,6 +10,7 @@ This work combines the advantages of the BranchyNet [[1]][[2]] approach with the
 2. [Docker Containerized Version](#docker-containerized-version)
 
     2.1. [Service deployment in Kubernetes](#service-deployment-in-kubernetes)
+3. [Kafka-ML](#kafka-ml)
 
 ## Getting started
 
@@ -109,10 +110,19 @@ Since this code can be containerized, it can be easily run as a service in Kuber
 
 These files can be modified to fit different architecture configurations.
 
+## Kafka-ML
+
+This project is an extension of Kafka-ML [[4]]. Kafka-ML is a framework to manage the pipeline of Tensorflow/Keras machine learning (ML) models on Kubernetes. The pipeline allows the design, training, and inference of ML models. The training and inference datasets for the ML models can be fed through Apache Kafka, thus they can be directly connected to data streams like the ones provided by the IoT.
+
+ML models can be easily defined in the Web UI with no need for external libraries and executions, providing an accessible tool for both experts and non-experts on ML.
+
+You can find more information about [Kafka-ML Github repository](https://github.com/ertis-research/kafka-ml).
+
 ----
 
-This a project of [ERTIS Lab](https://github.com/ertis-research) at [University of Malaga](uma.es)
+This a project of [ERTIS Lab](https://github.com/ertis-research) at [University of Malaga](uma.es).
 
 [1]: https://arxiv.org/abs/1709.01686
 [2]: https://github.com/kunglab/branchynet
 [3]: https://www.tensorflow.org/tutorials/load_data/images
+[4]: https://arxiv.org/abs/2006.04105
